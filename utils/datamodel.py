@@ -35,6 +35,15 @@ class Track:
     def __repr__(self):
         return f"Track '{self.title}' with id: {self.id} and duration {self.duration} ms\n\t Artists: {self.artists}\n\t Album: {self.album}"
 
+class TrackFeatures:
+    """
+    Структура для хранения характеристик аудио
+    """
+    def __init__(self, bpm, happyness, energetic):
+        self.bpm = bpm
+        self.happyness = happyness
+        self.energetic = energetic
+
 class Chart:
     def __init__(self, tracks: list[Track], chart_date=None):
         self.date = chart_date

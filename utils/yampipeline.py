@@ -5,23 +5,25 @@ from utils.feature_extractor import extract_features
 from utils.database import *
 
 yamapi = YaMusicAPI()
+db = DatabaseAdapter()
 
 def load_chart():
     chart = yamapi.load_chart().get_tracks()
 
     for track in chart:
-        track_db = read_track_from_db(track.id)
+        track_db = db.get_track(track.id)
+        print(track_db)
+
         if track_db:
-            print(f"Track {track_db} already in database!")
+            print(f"Track {track_db[0]} already in database!")
         else:
             audio, sr = yamapi.load_audio(track.id)
-            features = extract_features(audio, sr)
+            bpm = extract_features(audio, sr)
 
-            write_track_into_db(track.id, features)
+            track_features = TrackFeatures(int(bpm), 0.5, 0.6)
+            db.write_track(track, track_features)
 
         break
-
-    show_db()
 
 if __name__ == "__main__":
     load_chart()

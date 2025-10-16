@@ -3,3 +3,4 @@ torchvision==0.22.0
 torchaudio==2.7.0
 --extra-index-url https://download.pytorch.org/whl/cu118
 dotenv==0.9.9
+psycopg2==2.9.11

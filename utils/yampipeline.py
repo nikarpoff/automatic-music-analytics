@@ -18,9 +18,8 @@ def load_chart():
             print(f"Track {track_db[0]} already in database!")
         else:
             audio, sr = yamapi.load_audio(track.id)
-            bpm = extract_features(audio, sr)
+            track_features = extract_features(audio, sr)
 
-            track_features = TrackFeatures(int(bpm), 0.5, 0.6)
             db.write_track(track, track_features)
 
         break

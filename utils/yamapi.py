@@ -26,6 +26,7 @@ class YaMusicAPI:
         for track_short in chart.tracks:
             track = track_short.track
 
+            listeners = track_short.chart.listeners
             title = track.title
             track_id = track.id
             duration_ms = track.duration_ms
@@ -46,6 +47,7 @@ class YaMusicAPI:
                 track_id,
                 title,
                 duration_ms,
+                listeners,
                 artists,
                 album
             )

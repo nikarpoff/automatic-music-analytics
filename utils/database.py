@@ -32,9 +32,15 @@ class DatabaseAdapter:
                 id SERIAL PRIMARY KEY,
                 title VARCHAR(64) NOT NULL,
                 duration INTEGER,
-                bpm INTEGER,
-                energetic FLOAT,
-                happyness FLOAT,
+                tempo INTEGER,
+                energetic DOUBLE PRECISION,
+                happyness DOUBLE PRECISION,
+                rms_mean DOUBLE PRECISION,
+                rms_max DOUBLE PRECISION,
+                loudness_db DOUBLE PRECISION,
+                true_peak_db DOUBLE PRECISION,
+                key INTEGER,
+                mode INTEGER,
                 last_hit DATE DEFAULT CURRENT_DATE
             )
         """
@@ -42,27 +48,40 @@ class DatabaseAdapter:
 
     def get_track(self, track_id):
         return self._execute_query(
-            query=f"SELECT * FROM tracks WHERE id={track_id}",
+            query="SELECT * FROM tracks WHERE id=%s", params=(track_id,),
             fetch=True
         )
     
     def write_track(self, track: Track, features: TrackFeatures):
         self._execute_query(
-            query=f"""
+            query="""
             INSERT INTO tracks (
                 id,
                 title,
                 duration,
-                bpm,
+                tempo,
                 energetic,
-                happyness
-            ) VALUES (
-                {track.id},
-                '{track.title}',
-                {track.duration},
-                {features.bpm},
-                {features.energetic},
-                {features.happyness}
+                happyness,
+                rms_mean,
+                rms_max,
+                loudness_db,
+                true_peak_db,
+                key,
+                mode
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            params=(
+                track.id,
+                track.title,
+                track.duration,
+                features.tempo,
+                features.energetic,
+                features.happyness,
+                features.rms_mean,
+                features.rms_max,
+                features.loudness_db,
+                features.true_peak_db,
+                features.key,
+                features.mode
             )
-            """
         )

@@ -2,7 +2,7 @@ import io
 
 from yandex_music import Client
 
-from utils.datamodel import *
+from utils.datamodel import Artist, TrackMeta, Album
 
 
 CHART_ID = 'world'
@@ -15,7 +15,7 @@ class YaMusicAPI:
     def __init__(self):
         self.client = Client(None).init()
 
-    def load_chart(self, chart_id=CHART_ID) -> Chart:
+    def load_chart(self, chart_id=CHART_ID) -> list[TrackMeta]:
         """
         Loads chart (list of popular tracks)
         Each track is only meta information about track, not audio.
@@ -43,7 +43,7 @@ class YaMusicAPI:
                 track.albums[0].genre,
             )
 
-            track = Track(
+            track = TrackMeta(
                 track_id,
                 title,
                 duration_ms,
@@ -54,21 +54,18 @@ class YaMusicAPI:
 
             tracks.append(track)
 
-        return Chart(tracks)
+        return tracks
 
-    def load_audio(self, track_id: int):
+    def load_audio_bytes(self, track_id: int):
         """
-        Loads raw audio and reads it by librosa. 
-        :param track_id: integer id of track in ya.music
-        :returns np.ndarray audio, int/float sample rate
+        Loads raw audio bytes from Yandex Music by track id. 
+        :param track_id: integer id of track
+        :returns io.BytesIO audio_bytes
         """
-        import librosa
-
         track_download_info = self.client.tracksDownloadInfo(track_id)[0]
         audio_bytes = track_download_info.download_bytes()
 
         io_audio_bytes = io.BytesIO(audio_bytes)
-        audio, sr = librosa.load(io_audio_bytes)
 
-        return audio, sr
+        return io_audio_bytes
     

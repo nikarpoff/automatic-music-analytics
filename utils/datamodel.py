@@ -1,9 +1,3 @@
-import numpy as np
-import pandas as pd
-
-from datetime import date
-
-
 class Artist:
     def __init__(self, id, name):
         self.id = id
@@ -21,7 +15,7 @@ class Album:
     def __repr__(self):
         return f"Album '{self.title}' in genre {self.genre} with id: {self.id}"
 
-class Track:
+class TrackMeta:
     """
     Структура для хранения мета-информации о треке и некоторых характеристик аудио
     """
@@ -63,52 +57,13 @@ class TrackFeatures:
         self.key = key
         self.mode = mode
 
-
-class Chart:
-    def __init__(self, tracks: list[Track], chart_date=None):
-        self.date = chart_date
-        
-        if not self.date:
-            self.date = date.today()
-
-        self.tracks = tracks
-    
-        self.places = np.array(list(range(1, len(self.tracks) + 1)))
-        assert len(self.places) == len(self.tracks)
-
-        # Константа для нормировки мест (по умолчанию места чарта в пределах [0; 4])
-        k = 4
-        self.scores = np.exp(-(self.places / len(tracks)) * k)
-    
-    def get_tracks(self):
-        return self.tracks
-
-    def get_chart_dataframe(self):
-        chart_dict = {
-            "place": [],
-            "track_id": [],
-            "title": [],
-            "duration": [],
-            "genre": [],
-            "score": [],
-        }
-        
-        for i, track in enumerate(self.tracks):
-            chart_dict["place"].append(i + 1)
-            chart_dict["track_id"].append(track.id)
-            chart_dict["title"].append(track.title)
-            chart_dict["duration"].append(track.duration)
-            chart_dict["genre"].append(track.album.genre)
-            chart_dict["score"].append(self.scores[i])
-        
-        return pd.DataFrame.from_dict(chart_dict)
-
-    def get_genres_scores(self):
-        df = self.get_chart_dataframe()
-
-        genres_scores = df.groupby("genre")["score"].agg([
-            ('total_score', 'sum'),      # сумма score для каждого жанра
-            ('tracks_count', 'count')    # количество треков для каждого жанра
-        ]).reset_index()
-
-        return genres_scores
+class Track:
+    def __init__(self,
+                 track_meta: TrackMeta,
+                 track_features: TrackFeatures,
+                 last_hit_date: str,
+                 first_hit_date: str,
+                 score: float):
+        self.track_id = track_meta.id
+        self.title = track_meta.title
+        self.album = track_meta.album.title

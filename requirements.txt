@@ -1,6 +1,13 @@
+# ALL FOR FEATURES EXTRACTION AND E.T.C.
 torch==2.7.0
 torchvision==0.22.0
 torchaudio==2.7.0
 --extra-index-url https://download.pytorch.org/whl/cu118
-dotenv==0.9.9
+musan==0.0.3
+
+# DATABASES CLIENTS
 psycopg2==2.9.11
+clickhouse-connect==0.9.2
+
+# OTHER
+dotenv==0.9.9

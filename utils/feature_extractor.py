@@ -1,5 +1,8 @@
+# PLEASE, USE LAZY IMPORT FOR THIS MODULE IN DAG 'CAUSE IT HAS MANY DEPENDENCIES ON HEAVY LIBRARIES
+
 import librosa
 import numpy as np
+import musan
 
 from utils.datamodel import TrackFeatures
 
@@ -19,13 +22,18 @@ minor_profile = np.array(minor_profile) / np.sum(minor_profile)
 simple_major_profile = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1]
 simple_minor_profile = [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0]
 
+happy_sad_classifier, relaxing_energetic_classifier = musan.load_pretraned_models()
 
-def extract_features(audio, sr=22050):
+
+def extract_features(audio_bytes):
+    # TODO make logging here!
+    audio, sr = librosa.load(audio_bytes)
+
     tempo, _ = librosa.beat.beat_track(y=audio, sr=sr)
 
     loudness = extract_loudness(audio, sr)
     key, mode = extract_key_mode(audio, sr)
-    happyness, energetic = extract_happyness_energetic(audio, sr)
+    happyness, energetic = extract_happyness_energetic(audio_bytes)
 
     track_features = TrackFeatures(
         int(tempo[0]),
@@ -101,6 +109,12 @@ def extract_key_mode(audio, sr=22050):
 
     return key, mode
 
-def extract_happyness_energetic(audio, sr=22050):
-    # TODO: extract happyness and energetic
-    return 0.5, 0.5
+
+def extract_happyness_energetic(audio_bytes):
+    result = musan.predict(
+        audio_bytes,
+        happy_sad_classifier,
+        relaxing_energetic_classifier
+    )
+
+    return result["happy"], result["energetic"]

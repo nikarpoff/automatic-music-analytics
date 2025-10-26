@@ -190,14 +190,17 @@ class ChartDatabaseAdapter:
         """
         )
 
-        if not any(idx['name'] == 'idx_genre' for idx in self.client.query('SHOW INDEXES FROM charts.chart').result_rows):
-            self.client.command("ALTER TABLE charts.charts ADD INDEX idx_genre genre TYPE set(100) GRANULARITY 1")
+        # if not any(idx['name'] == 'idx_genre' for idx in self.client.query('SHOW INDEXES FROM charts.tracks').result_rows):
+        #     self.client.command("ALTER TABLE charts.tracks ADD INDEX idx_genre genre TYPE set(100) GRANULARITY 1")
         
-        if not any(idx['name'] == 'idx_track' for idx in self.client.query('SHOW INDEXES FROM charts.chart').result_rows):
-            self.client.command("ALTER TABLE charts.charts ADD INDEX idx_track track_id TYPE minmax GRANULARITY 1")
+        # if not any(idx['name'] == 'idx_track' for idx in self.client.query('SHOW INDEXES FROM charts.tracks').result_rows):
+        #     self.client.command("ALTER TABLE charts.tracks ADD INDEX idx_track track_id TYPE minmax GRANULARITY 1")
+
+        # if not any(idx['name'] == 'idx_track' for idx in self.client.query('SHOW INDEXES FROM charts.chart').result_rows):
+        #     self.client.command("ALTER TABLE charts.charts ADD INDEX idx_track track_id TYPE minmax GRANULARITY 1")
         
-        if not any(idx['name'] == 'idx_date' for idx in self.client.query('SHOW INDEXES FROM charts.chart').result_rows):
-            self.client.command("ALTER TABLE charts.charts ADD INDEX idx_date date TYPE minmax GRANULARITY 1")
+        # if not any(idx['name'] == 'idx_date' for idx in self.client.query('SHOW INDEXES FROM charts.chart').result_rows):
+        #     self.client.command("ALTER TABLE charts.charts ADD INDEX idx_date date TYPE minmax GRANULARITY 1")
     
     def close(self):
         self.client.close()
@@ -231,7 +234,7 @@ class ChartDatabaseAdapter:
         INSERT INTO charts.authors (author_id, author)
         SELECT author_id, author
         FROM temp_authors
-        LEFT ANTI JOIN charts.authors AS existing USING (track_id)
+        LEFT ANTI JOIN charts.authors AS existing USING (author_id)
         """)
 
     def insert_tracks(self, tracks: list[list]):
@@ -251,7 +254,7 @@ class ChartDatabaseAdapter:
                 "energetic",
                 "rms_mean",
                 "rms_max",
-                "loudness_db",
+                "loudness",
                 "true_peak_db",
                 "key",
                 "mode"
@@ -259,17 +262,17 @@ class ChartDatabaseAdapter:
         )
 
         self.client.command("""
-        INSERT INTO charts.tracks (track_id, title, album, genre, duration, tempo, happyness, energetic, rms_mean, rms_max, loudness_db, true_peak_db, key, mode)
-        SELECT track_id, title, album, genre, duration, tempo, happyness, energetic, rms_mean, rms_max, loudness_db, true_peak_db, key, mode
+        INSERT INTO charts.tracks (track_id, title, album, genre, duration, tempo, happyness, energetic, rms_mean, rms_max, loudness, true_peak_db, key, mode)
+        SELECT track_id, title, album, genre, duration, tempo, happyness, energetic, rms_mean, rms_max, loudness, true_peak_db, key, mode
         FROM temp_tracks
         LEFT ANTI JOIN charts.tracks AS existing USING (track_id)
         """)
 
     def insert_authors_tracks(self, authors_tracks: list[list]):
-        self.client.command("CREATE TEMPORARY TABLE temp_authors_tracks AS charts.authors_tracks")
+        self.client.command("CREATE TEMPORARY TABLE temp_tracks_authors AS charts.tracks_authors")
 
         self.client.insert(
-            table="temp_authors_tracks",
+            table="temp_tracks_authors",
             data=authors_tracks,
             column_names=[
                 "track_id",
@@ -278,8 +281,8 @@ class ChartDatabaseAdapter:
         )
 
         self.client.command("""
-        INSERT INTO charts.authors_tracks (track_id, author_id)
+        INSERT INTO charts.tracks_authors (track_id, author_id)
         SELECT track_id, author_id
-        FROM temp_authors_tracks
-        LEFT ANTI JOIN charts.authors_tracks AS existing USING (track_id, author_id)
+        FROM temp_tracks_authors
+        LEFT ANTI JOIN charts.tracks_authors AS existing USING (track_id, author_id)
         """)

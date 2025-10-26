@@ -7,7 +7,7 @@ from utils.datamodel import TrackFeatures, TrackMeta
 @dag(
     dag_id="yam_etl",
     schedule=timedelta(days=1),
-    start_date=datetime(2025, 23, 10),
+    start_date=datetime(2025, 10, 25),
     catchup=False,
     tags=["yandex", "music", "etl", "api"],
     default_args={
@@ -166,7 +166,6 @@ def yam_charts_taskflow():
         """
         Loads chart, tracks, authors and authors_tracks into database
         """
-
         adb = ChartDatabaseAdapter()
 
         logger.info(f"Start loading data into database!")

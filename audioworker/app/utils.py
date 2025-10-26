@@ -1,10 +1,21 @@
-# PLEASE, USE LAZY IMPORT FOR THIS MODULE IN DAG 'CAUSE IT HAS MANY DEPENDENCIES ON HEAVY LIBRARIES
-
+# PLEASE, USE LAZY IMPORT FOR THIS MODULE IN CRITICAL POINTS 'CAUSE IT HAS MANY DEPENDENCIES ON HEAVY LIBRARIES
+import os
+import io
+from datetime import date
 import librosa
 import numpy as np
 import musan
+import logging
 
-from utils.datamodel import TrackFeatures
+# LOGGING
+if not os.path.exists("logs"):
+    os.makedirs("logs")
+
+DATE_FORMAT = "%d-%m-%Y"
+file_log = logging.FileHandler(f"logs/audioworker-{date.today().strftime(DATE_FORMAT)}.log")
+console_out = logging.StreamHandler()
+
+logging.basicConfig(handlers=(file_log, console_out), level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 # Тоники (храним только индексы, где 0 = C, 1 = C#, ..., 11 = B)
@@ -22,30 +33,50 @@ minor_profile = np.array(minor_profile) / np.sum(minor_profile)
 simple_major_profile = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1]
 simple_minor_profile = [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0]
 
+logging.info("Loading Musan pre-trained models...")
 happy_sad_classifier, relaxing_energetic_classifier = musan.load_pretraned_models()
+logging.info("Musan pre-trained models loaded.")
 
-
-def extract_features(audio_bytes):
-    # TODO make logging here!
+def extract_features(audio_bytes: io.BytesIO, uuid=None) -> dict:
+    logging.info(f"Loading audio for uuid: {uuid}")
     audio, sr = librosa.load(audio_bytes)
 
+    logging.info(f"Extracting tempo for uuid: {uuid}")
     tempo, _ = librosa.beat.beat_track(y=audio, sr=sr)
-
+    logging.info(f"Extracted {tempo} for uuid: {uuid}")
+    
+    logging.info(f"Extracting loudness for uuid: {uuid}")
     loudness = extract_loudness(audio, sr)
-    key, mode = extract_key_mode(audio, sr)
-    happyness, energetic = extract_happyness_energetic(audio_bytes)
+    logging.info(f"Extracted loudness for uuid: {uuid}")
 
-    track_features = TrackFeatures(
-        int(tempo[0]),
-        float(happyness),
-        float(energetic),
-        float(loudness['rms_mean']),
-        float(loudness['rms_max']),
-        float(loudness['loudness_db']),
-        float(loudness['true_peak_db']),
-        int(key),
-        int(mode)
-    )
+    logging.info(f"Extracting key and mode for uuid: {uuid}")
+    key, mode = extract_key_mode(audio, sr)
+    logging.info(f"Extracted key: {keys[key]}, mode: {'major' if mode == 1 else 'minor'} for uuid: {uuid}")
+
+    logging.info(f"Extracting happyness and energetic for uuid: {uuid}")
+    audio_bytes.seek(0)
+    happyness, energetic = extract_happyness_energetic(audio_bytes)
+    logging.info(f"Extracted happyness: {happyness}, energetic: {energetic} for uuid: {uuid}")
+
+    if not happyness:
+        logging.warning(f"Happyness extraction failed for uuid: {uuid}, setting default value 0.5")
+        happyness = 0.5
+
+    if not energetic:
+        logging.warning(f"Energetic extraction failed for uuid: {uuid}, setting default value 0.5")
+        energetic = 0.5
+
+    track_features = {
+        "tempo": int(tempo[0]),
+        "happyness": float(happyness),
+        "energetic": float(energetic),
+        "rms_mean": float(loudness['rms_mean']),
+        "rms_max": float(loudness['rms_max']),
+        "loudness_db": float(loudness['loudness_db']),
+        "true_peak_db": float(loudness['true_peak_db']),
+        "key": int(key),
+        "mode": int(mode)
+    }
 
     return track_features
 

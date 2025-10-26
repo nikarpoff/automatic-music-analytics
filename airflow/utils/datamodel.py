@@ -57,13 +57,15 @@ class TrackFeatures:
         self.key = key
         self.mode = mode
 
-class Track:
-    def __init__(self,
-                 track_meta: TrackMeta,
-                 track_features: TrackFeatures,
-                 last_hit_date: str,
-                 first_hit_date: str,
-                 score: float):
-        self.track_id = track_meta.id
-        self.title = track_meta.title
-        self.album = track_meta.album.title
+def build_track_features_from_dict(features: dict) -> TrackFeatures:
+    return TrackFeatures(
+        tempo=features.get("tempo"),
+        happyness=features.get("happyness"),
+        energetic=features.get("energetic"),
+        rms_mean=features.get("rms_mean"),
+        rms_max=features.get("rms_max"),
+        loudness_db=features.get("loudness_db"),
+        true_peak_db=features.get("true_peak_db"),
+        key=features.get("key"),
+        mode=features.get("mode"),
+    )

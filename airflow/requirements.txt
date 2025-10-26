@@ -1,0 +1,10 @@
+# DATABASES CLIENTS
+psycopg2-binary==2.9.11
+clickhouse-connect==0.9.2
+
+# OTHER
+dotenv==0.9.9
+
+# API
+yandex_music==2.2.0
+requests==2.32.5

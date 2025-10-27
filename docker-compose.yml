@@ -49,8 +49,8 @@ x-airflow-common:
   # In order to add custom dependencies or upgrade provider distributions you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.1.0}
-  # build: .
+  # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.1.0}
+  build: ./airflow
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -78,11 +78,15 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-50000}:0"
+  networks:
+    - backend
   depends_on:
     &airflow-common-depends-on
     redis:
       condition: service_healthy
     postgres:
+      condition: service_healthy
+    tracks_postgres:
       condition: service_healthy
 
 services:
@@ -100,6 +104,8 @@ services:
       retries: 5
       start_period: 5s
     restart: always
+    networks:
+      - backend
 
   redis:
     # Redis is limited to 7.2-bookworm due to licencing change
@@ -114,6 +120,8 @@ services:
       retries: 50
       start_period: 30s
     restart: always
+    networks:
+      - backend
 
   airflow-apiserver:
     <<: *airflow-common
@@ -127,6 +135,8 @@ services:
       retries: 5
       start_period: 30s
     restart: always
+    networks:
+      - backend
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -142,6 +152,8 @@ services:
       retries: 5
       start_period: 30s
     restart: always
+    networks:
+      - backend
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -157,6 +169,8 @@ services:
       retries: 5
       start_period: 30s
     restart: always
+    networks:
+      - backend
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -180,6 +194,8 @@ services:
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: "0"
     restart: always
+    networks:
+      - backend
     depends_on:
       <<: *airflow-common-depends-on
       airflow-apiserver:
@@ -197,6 +213,8 @@ services:
       retries: 5
       start_period: 30s
     restart: always
+    networks:
+      - backend
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -292,6 +310,8 @@ services:
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
       _PIP_ADDITIONAL_REQUIREMENTS: ''
+    networks:
+      - backend
     user: "0:0"
 
   airflow-cli:
@@ -302,6 +322,8 @@ services:
       <<: *airflow-common-env
       CONNECTION_CHECK_MAX_COUNT: "0"
     # Workaround for entrypoint issue. See: https://github.com/apache/airflow/issues/16252
+    networks:
+      - backend
     command:
       - bash
       - -c
@@ -326,6 +348,8 @@ services:
       retries: 5
       start_period: 30s
     restart: always
+    networks:
+      - backend
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -352,7 +376,7 @@ services:
         soft: 262144
         hard: 262144
     networks:
-      - clickhouse-net
+      - backend
 
   tracks_postgres:
     image: postgres:16
@@ -361,10 +385,24 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: tracks
     ports:
-      - "5433:5433"
+      - "5432:5432"
     volumes:
       - postgres-db-volume-tracks:/var/lib/postgresql/data
     restart: always
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    networks:
+      - backend
+
+  audioworker:
+    build: ./audioworker
+    ports:
+      - "8000:8000"
+    networks:
+      - backend
 
 volumes:
   postgres-db-volume:
@@ -373,5 +411,5 @@ volumes:
   clickhouse_log:
 
 networks:
-  clickhouse-net:
+  backend:
     driver: bridge

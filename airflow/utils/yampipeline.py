@@ -3,7 +3,6 @@
 from utils.yamapi import YaMusicAPI
 from utils.database import *
 from utils.featapi import FeaturesExtractorAPI
-import requests
 
 from utils.datamodel import build_track_features_from_dict
 

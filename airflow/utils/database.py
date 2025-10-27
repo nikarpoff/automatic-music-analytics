@@ -5,7 +5,7 @@ import clickhouse_connect
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 
-from utils.datamodel import Track, TrackMeta, TrackFeatures
+from utils.datamodel import TrackMeta, TrackFeatures
 
 
 class TracksDatabaseAdapter:

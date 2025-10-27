@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from airflow.sdk import dag, task
 import logging
 
-from utils.datamodel import TrackFeatures, TrackMeta
+from utils.datamodel import TrackFeatures, TrackMeta, build_track_features_from_dict
 
 @dag(
     dag_id="yam_etl",
@@ -34,11 +34,13 @@ def yam_charts_taskflow():
     """
     from utils.yamapi import YaMusicAPI
     from utils.database import TracksDatabaseAdapter, ChartDatabaseAdapter
+    from utils.featapi import FeaturesExtractorAPI
 
     logger = logging.getLogger("airflow.task")
 
-    db = TracksDatabaseAdapter()
+    tdb = TracksDatabaseAdapter()
     yamapi = YaMusicAPI()
+    featapi = FeaturesExtractorAPI()
 
     @task(retries=3)
     def extract_chart() -> list[TrackMeta]:
@@ -65,36 +67,23 @@ def yam_charts_taskflow():
         tracks_features = []
 
         for track in chart:
-            track_features = db.get_track(track.id)
+            features_db = tdb.get_track(track.id)
 
-            if track_features:
+            if features_db:
                 # Track features already in db 
                 logger.info(f"Track {track.id} already in database!")
-                track_features = dict(track_features[0])
-
-                # Always wrap dict into custom class!
-                track_features = TrackFeatures(
-                    tempo=track_features.get("tempo"),
-                    happyness=track_features.get("happyness"),
-                    energetic=track_features.get("energetic"),
-                    rms_mean=track_features.get("rms_mean"),
-                    rms_max=track_features.get("rms_max"),
-                    loudness_db=track_features.get("loudness_db"),
-                    true_peak_db=track_features.get("true_peak_db"),
-                    key=track_features.get("key"),
-                    mode=track_features.get("mode"),
-                )
+                features_dict = dict(features_db[0])
+                track_features = build_track_features_from_dict(features_dict)
 
                 # Don't forget update dynamic information about track!
-                db.update_last_hit_date(track.id)
+                tdb.update_last_hit_date(track.id)
             else:
                 # Track features wasn't found -> lets extract features
-                from utils.feature_extractor import extract_features  # lazy load, 'cause torchaudio&librosa dependencies
-
                 audio_bytes = yamapi.load_audio_bytes(track.id)
-                track_features = extract_features(audio_bytes)
+                features_dict = featapi.extract_features(audio_bytes)
+                track_features = build_track_features_from_dict(features_dict)
 
-                db.write_track(track, track_features)
+                tdb.write_track(track, track_features)
                 new_tracks_count += 1
             
             tracks_features.append(track_features)
@@ -116,23 +105,25 @@ def yam_charts_taskflow():
         authors = []
         authors_tracks = []
 
-        for place, track_meta, track_features in enumerate(zip(tracks_meta, tracks_features)):
+        for place, (track_meta, track_features) in enumerate(zip(tracks_meta, tracks_features)):
             authors.extend([
                 [
-                    artist.id,
+                    int(artist.id),
                     artist.name
                 ] for artist in track_meta.artists
             ])  # append authors
 
-            authors_tracks.append([
+            authors_tracks.extend(
+            [    
                 [
-                    track_meta.id,
-                    artist.id
+                    int(track_meta.id),
+                    int(artist.id)
                 ] for artist in track_meta.artists
-            ])  # append relation M:M authors<->tracks
-            
+            ]
+            )  # append relation M:M authors<->tracks
+
             tracks.append([
-                track_meta.id,
+                int(track_meta.id),
                 track_meta.title,
                 track_meta.album.title,
                 track_meta.album.genre,
@@ -151,7 +142,7 @@ def yam_charts_taskflow():
             score = 1 - log10(place + 1)
 
             chart.append([
-                track_meta.id,
+                int(track_meta.id),
                 datetime.now().date(),
                 place + 1,
                 score,
@@ -183,5 +174,7 @@ def yam_charts_taskflow():
     tracks_features = extract_features_for_new_tracks(chart)
     chart, tracks, authors, authors_tracks = transform_chart(chart, tracks_features)
     load_data(chart, tracks, authors, authors_tracks)
+
+    logger.info("DAG tasks done!")
 
 yam_charts_taskflow()

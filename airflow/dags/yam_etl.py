@@ -2,11 +2,11 @@ from datetime import datetime, timedelta
 from airflow.sdk import dag, task
 import logging
 
-from utils.datamodel import TrackFeatures, TrackMeta, build_track_features_from_dict
+from utils.datamodel import build_track_features_from_dict, build_track_meta_from_dict
 
 @dag(
     dag_id="yam_etl",
-    schedule=timedelta(days=1),
+    schedule=timedelta(days=3),
     start_date=datetime(2025, 10, 25),
     catchup=False,
     tags=["yandex", "music", "etl", "api"],
@@ -43,13 +43,13 @@ def yam_charts_taskflow():
     featapi = FeaturesExtractorAPI()
 
     @task(retries=3)
-    def extract_chart() -> list[TrackMeta]:
+    def extract_chart() -> list[dict]:
         chart = yamapi.load_chart()
         logger.info(f"Extracted Chart with {len(chart)} tracks...")
-        return chart
+        return [track.to_dict() for track in chart]
     
     @task(retries=2)
-    def extract_features_for_new_tracks(chart: list[TrackMeta]) -> list[TrackFeatures]:
+    def extract_features_for_new_tracks(chart: list[dict]) -> list[dict]:
         """
         For each tracks tryies to get it from database.
         If track already exists, only update last_hit_date.
@@ -62,6 +62,7 @@ def yam_charts_taskflow():
             tracks_features (list[TrackFeatures]): a list of features for each of tracks meta that were extracted or loaded from db
         """
         logger.info(f"Start processing chart!")
+        chart = [build_track_meta_from_dict(d) for d in chart]
 
         new_tracks_count = 0
         tracks_features = []
@@ -89,15 +90,18 @@ def yam_charts_taskflow():
             tracks_features.append(track_features)
         
         logger.info(f"There {new_tracks_count} tracks were loaded in database!")
-        return tracks_features
+        return [track.to_dict() for track in tracks_features]
 
     @task(retries=3)
-    def transform_chart(tracks_meta: list[TrackMeta], tracks_features: list[TrackFeatures]):
+    def transform_chart(tracks_meta: list[dict], tracks_features: list[dict]) -> dict:
         """
         Makes transformation of chart that ready to be loaded in analitycs database
         """
         from datetime import datetime
         from math import log10
+
+        tracks_meta = [build_track_meta_from_dict(d) for d in tracks_meta]
+        tracks_features = [build_track_features_from_dict(d) for d in tracks_features]
 
         logger.info(f"Start transforming chart!")
         tracks = []
@@ -150,7 +154,12 @@ def yam_charts_taskflow():
             ])  # append chart entry
         
         logger.info(f"Chart transformed with {len(tracks)} tracks,  {len(authors)} authors and {len(chart)} chart records!")
-        return chart, tracks, authors, authors_tracks
+        return {
+            "chart": chart,
+            "authors": authors,
+            "authors_tracks": authors_tracks,
+            "tracks": tracks
+        }
 
     @task(retries=3)
     def load_data(chart, tracks, authors, authors_tracks):
@@ -172,8 +181,13 @@ def yam_charts_taskflow():
 
     chart = extract_chart()
     tracks_features = extract_features_for_new_tracks(chart)
-    chart, tracks, authors, authors_tracks = transform_chart(chart, tracks_features)
-    load_data(chart, tracks, authors, authors_tracks)
+    transformed_chart = transform_chart(chart, tracks_features)
+    load_data(
+        transformed_chart["chart"],
+        transformed_chart["tracks"],
+        transformed_chart["authors"],
+        transformed_chart["authors_tracks"]
+    )
 
     logger.info("DAG tasks done!")
 

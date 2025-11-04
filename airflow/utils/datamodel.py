@@ -3,6 +3,12 @@ class Artist:
         self.id = id
         self.name = name
     
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name
+        }
+
     def __repr__(self):
         return f"Author '{self.name}' with id: {self.id}"
 
@@ -11,6 +17,13 @@ class Album:
         self.id = id
         self.title = title
         self.genre = genre
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "genre": self.genre
+        }
     
     def __repr__(self):
         return f"Album '{self.title}' in genre {self.genre} with id: {self.id}"
@@ -26,6 +39,16 @@ class TrackMeta:
         self.listeners = listeners
         self.artists = artists
         self.album = album
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "duration": self.duration,
+            "listeners": self.listeners,
+            "artists": [artist.to_dict() for artist in self.artists],
+            "album": self.album.to_dict(),
+        }
 
     def __repr__(self):
         return f"Track '{self.title}' with id: {self.id} and duration {self.duration} ms\n\t Artists: {self.artists}\n\t Album: {self.album}"
@@ -56,6 +79,33 @@ class TrackFeatures:
         self.true_peak_db = true_peak_db
         self.key = key
         self.mode = mode
+
+    def to_dict(self) -> dict:
+        return {
+            "tempo": self.tempo,
+            "happyness": self.happyness,
+            "energetic": self.energetic,
+            "rms_mean": self.rms_mean,
+            "rms_max": self.rms_max,
+            "loudness_db": self.loudness_db,
+            "true_peak_db": self.true_peak_db,
+            "key": self.key,
+            "mode": self.mode,
+        }
+
+def build_track_meta_from_dict(meta: dict) -> TrackMeta:
+    artists = [Artist(artist.get("id"), artist.get("name")) for artist in meta.get("artists")]
+    album_dict = meta.get("album")
+    album = Album(album_dict.get("id"), album_dict.get("title"), album_dict.get("genre"))
+
+    return TrackMeta(
+        id=meta.get("id"),
+        title=meta.get("title"),
+        duration=meta.get("duration"),
+        listeners=meta.get("listeners"),
+        artists=artists,
+        album=album,
+    )
 
 def build_track_features_from_dict(features: dict) -> TrackFeatures:
     return TrackFeatures(

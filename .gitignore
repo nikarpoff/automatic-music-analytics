@@ -3,6 +3,7 @@
 .vscode
 
 airflow.cfg
+logs
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

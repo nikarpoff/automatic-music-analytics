@@ -15,10 +15,10 @@ class TracksDatabaseAdapter:
     """
     def __init__(self):
         load_dotenv()
-        user = os.getenv("POSTGRES_USER")
-        password = os.getenv("POSTGRES_PASSWORD")
-        host = os.getenv("POSTGRES_HOST")
-        port = os.getenv("POSTGRES_PORT")
+        user = os.getenv("POSTGRES_TRACKS_USER")
+        password = os.getenv("POSTGRES_TRACKS_PASSWORD")
+        host = os.getenv("POSTGRES_TRACKS_HOST")
+        port = os.getenv("POSTGRES_TRACKS_PORT")
         self.connection_string = f"postgresql://{user}:{password}@{host}:{port}/tracks"
         self._create_tables_if_not_exists()
 
